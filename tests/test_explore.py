@@ -45,6 +45,11 @@ def test_duplicate_request_report(sample_df: pd.DataFrame) -> None:
     assert duplicates["SRNUMBER"].tolist() == ["100", "100"]
 
 
+def test_duplicate_request_report_excludes_missing_identifiers() -> None:
+    df = pd.DataFrame({"SRNUMBER": [None, None, "100"]})
+    assert duplicate_request_report(df).empty
+
+
 def test_convert_date_columns_returns_a_copy(sample_df: pd.DataFrame) -> None:
     converted = convert_date_columns(sample_df)
     assert pd.api.types.is_datetime64_any_dtype(converted["CREATE_DATE"])
@@ -55,6 +60,11 @@ def test_convert_date_columns_returns_a_copy(sample_df: pd.DataFrame) -> None:
 def test_category_counts(sample_df: pd.DataFrame) -> None:
     counts = category_counts(sample_df, top_n=1)
     assert counts.to_dict() == {"Animals": 2}
+
+
+def test_missing_values_report_handles_empty_dataframe() -> None:
+    report = missing_values_report(pd.DataFrame(columns=["CATEGORY"]))
+    assert report.loc["CATEGORY", "missing_percent"] == 0
 
 
 def test_exploration_functions_reject_missing_columns() -> None:

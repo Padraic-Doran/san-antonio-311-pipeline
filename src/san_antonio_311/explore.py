@@ -47,7 +47,10 @@ def missing_values_report(df: pd.DataFrame) -> pd.DataFrame:
 def duplicate_request_report(df: pd.DataFrame) -> pd.DataFrame:
     """Return every row whose service-request number appears more than once."""
     _require_columns(df, ["SRNUMBER"])
-    duplicates = df.duplicated(subset=["SRNUMBER"], keep=False)
+    # Missing identifiers are a validation concern, not a group of duplicates.
+    duplicates = df["SRNUMBER"].notna() & df.duplicated(
+        subset=["SRNUMBER"], keep=False
+    )
     return df.loc[duplicates].sort_values("SRNUMBER").copy()
 
 

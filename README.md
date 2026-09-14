@@ -2,17 +2,20 @@
 
 A data engineering portfolio project for ingesting, validating, and analyzing City of San Antonio 311 service-request data.
 
-The project is being built in small, testable stages. The current stage provides
-a command-line extractor that downloads a bounded snapshot from the city's
-public ArcGIS service and stores it locally as JSON Lines.
+The project is being built in small, testable stages. It currently provides a
+command-line extractor, schema checks, paginated downloads, timestamped local
+snapshots, reusable exploratory helpers, and a Jupyter notebook.
 
 ## Current capabilities
 
 - Queries the official public 311 feature layer without an API key.
-- Selects a predictable sample by ordering records by `OBJECTID`.
+- Paginates requests while ordering each current snapshot by `OBJECTID`.
 - Preserves source attributes while flattening map geometry into `LONGITUDE`
   and `LATITUDE` fields.
 - Writes atomically so an interrupted run does not leave a partial output file.
+- Preserves earlier runs in timestamped directories and records provenance
+  metadata beside every snapshot.
+- Validates the ArcGIS response structure and required record fields.
 - Keeps downloaded datasets out of Git while retaining the data directories.
 - Provides reusable pandas helpers for dataset summaries, missing values,
   duplicate request numbers, date conversion, and category counts.
@@ -23,6 +26,19 @@ The first ingestion stage reads the City of San Antonio's public
 [311 Open Service Calls](https://services.arcgis.com/g1fRTDLeMgspWrYp/arcgis/rest/services/311_Open_Service_Calls/FeatureServer/0)
 ArcGIS Feature Service. The source is a daily view of open cases and cases closed
 within the last seven days; it is not a complete historical archive.
+
+## Project status
+
+| Stage | Status |
+| --- | --- |
+| Official API discovery | Complete |
+| Validated, paginated ingestion | Complete |
+| Timestamped snapshot storage | Complete |
+| Exploratory notebook and helpers | Complete |
+| Automated tests and GitHub Actions | Complete |
+| Cleaning and transformation | Planned |
+| PostgreSQL loading | Planned |
+| Historical trend analysis | Planned |
 
 ## Development setup
 
@@ -57,10 +73,17 @@ pipeline code—not a separate implementation.
 sa311-ingest --limit 100
 ```
 
-The command writes newline-delimited JSON to
-`data/raw/service_requests.jsonl`. Raw data files are intentionally ignored by
-Git. Use `--output PATH` to choose another destination. A single request is
-limited to 2,000 records, matching the service's advertised response limit.
+By default, each command creates a new timestamped landing-zone snapshot:
+
+```text
+data/raw/extracted_at=2026-09-14T20-30-00.000000Z/
+├── service_requests.jsonl
+└── metadata.json
+```
+
+The service limits an individual API page to 2,000 records. The command
+automatically makes additional paginated requests when `--limit` is larger.
+Downloaded files are intentionally ignored by Git.
 
 Choose a different output file when needed:
 
@@ -73,6 +96,11 @@ descriptive fields such as `SRNUMBER`, `STATUS`, `CATEGORY`, `TITLE`, dates,
 council district, and coordinates. ArcGIS date values are currently preserved
 as Unix epoch milliseconds so the raw stage remains faithful to the source.
 
+These landing-zone records are **lightly normalized**, not byte-for-byte copies
+of the ArcGIS response: selected source attributes are retained while nested
+geometry is flattened into `LONGITUDE` and `LATITUDE`. `metadata.json` records
+the extraction time, source URL, and requested versus actual record counts.
+
 ## Pipeline flow
 
 ```text
@@ -82,7 +110,7 @@ City of San Antonio ArcGIS Feature Service
        validate and flatten response
                     |
                     v
-     data/raw/service_requests.jsonl
+  timestamped JSONL snapshot + metadata
 ```
 
 ## Python execution order
@@ -93,10 +121,12 @@ building the URL is one step in the download operation.
 
 ```text
 main()
-├── parse_args()          Read --limit and --output
-├── fetch_features()     Download and flatten the records
-│   └── build_query_url() Build the ArcGIS request URL
-└── write_jsonl()        Save the records safely
+├── parse_args()           Read command options
+├── default_output_path()  Choose a timestamped destination when needed
+├── fetch_features()      Download, paginate, validate, and flatten records
+│   └── build_query_url()  Build each ArcGIS page URL
+├── write_jsonl()         Save the records safely
+└── write_metadata()      Save extraction provenance
 ```
 
 When `sa311-ingest` starts, Python calls `main()`. Python then follows the
@@ -109,24 +139,27 @@ function and returning before continuing to the next statement.
 src/san_antonio_311/  Python package
 tests/                Automated tests
 notebooks/            Jupyter exploration and learning
-data/raw/             Unmodified source data (not committed)
+data/raw/             Timestamped landing snapshots (not committed)
 data/processed/       Cleaned and transformed data (not committed)
 ```
 
 ## Run quality checks
 
 ```bash
-pytest
+coverage run -m pytest
+coverage report
 ruff check .
 ```
 
-The tests exercise URL construction, the ArcGIS response transformation, JSONL
-writing, exploratory analysis helpers, and package installation without calling
-the live API.
+The tests exercise pagination, schema and error handling, record transformation,
+atomic JSONL writing, metadata, the command entry point, exploratory helpers,
+and package installation without calling the live API. GitHub Actions runs the
+same checks on Python 3.11 and 3.14 after every push and pull request.
 
 ## Known limitation
 
 The current city layer is a recent operational snapshot—not a historical
-archive. The next milestone is to locate an authoritative historical source or
-begin storing dated snapshots, then add schema validation and incremental-load
-behavior.
+archive. Timestamped runs can build local history going forward, but they do not
+recover requests that disappeared before collection began. Ordering by
+`OBJECTID` is stable within a snapshot; the source can change between daily
+refreshes.
