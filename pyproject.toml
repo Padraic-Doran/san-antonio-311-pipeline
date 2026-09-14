@@ -14,6 +14,7 @@ dependencies = [
 
 [project.scripts]
 sa311-ingest = "san_antonio_311.ingest:main"
+sa311-transform = "san_antonio_311.transform:main"
 
 [project.optional-dependencies]
 dev = [

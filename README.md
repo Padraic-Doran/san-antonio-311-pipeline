@@ -19,6 +19,9 @@ snapshots, reusable exploratory helpers, and a Jupyter notebook.
 - Keeps downloaded datasets out of Git while retaining the data directories.
 - Provides reusable pandas helpers for dataset summaries, missing values,
   duplicate request numbers, date conversion, and category counts.
+- Cleans landing snapshots into analysis-ready records with normalized text,
+  UTC timestamps, lowercase column names, deterministic deduplication, and a
+  quality report.
 
 ## Data source
 
@@ -36,7 +39,7 @@ within the last seven days; it is not a complete historical archive.
 | Timestamped snapshot storage | Complete |
 | Exploratory notebook and helpers | Complete |
 | Automated tests and GitHub Actions | Complete |
-| Cleaning and transformation | Planned |
+| Cleaning and transformation | Complete |
 | PostgreSQL loading | Planned |
 | Historical trend analysis | Planned |
 
@@ -101,6 +104,30 @@ of the ArcGIS response: selected source attributes are retained while nested
 geometry is flattened into `LONGITUDE` and `LATITUDE`. `metadata.json` records
 the extraction time, source URL, and requested versus actual record counts.
 
+## Transform a snapshot
+
+Pass an ingested JSONL file to the transformation command:
+
+```bash
+sa311-transform \
+  --input data/raw/extracted_at=TIMESTAMP/service_requests.jsonl
+```
+
+The default output mirrors the timestamp under `data/processed/` and adds a
+quality report:
+
+```text
+data/processed/extracted_at=TIMESTAMP/
+├── service_requests.jsonl
+└── quality_report.json
+```
+
+The transformation trims text, replaces empty strings with missing values,
+uppercases statuses, converts ArcGIS dates to UTC ISO-8601 values, changes column
+names to lowercase, flags invalid coordinates, and keeps the most recently
+updated row when a service-request number is duplicated. The landing snapshot is
+left unchanged.
+
 ## Pipeline flow
 
 ```text
@@ -110,7 +137,13 @@ City of San Antonio ArcGIS Feature Service
        validate and flatten response
                     |
                     v
-  timestamped JSONL snapshot + metadata
+  timestamped landing snapshot + metadata
+                    |
+                    v
+       validate, clean, and deduplicate
+                    |
+                    v
+ processed JSONL snapshot + quality report
 ```
 
 ## Python execution order
@@ -127,6 +160,16 @@ main()
 │   └── build_query_url()  Build each ArcGIS page URL
 ├── write_jsonl()         Save the records safely
 └── write_metadata()      Save extraction provenance
+```
+
+The separate `sa311-transform` command follows the same coordinator pattern:
+
+```text
+main()
+├── load_jsonl()            Load one landing snapshot
+├── transform_records()     Clean, convert, flag, and deduplicate
+├── write_processed_jsonl() Save analysis-ready records
+└── write_quality_report()  Save row-level quality counts
 ```
 
 When `sa311-ingest` starts, Python calls `main()`. Python then follows the
