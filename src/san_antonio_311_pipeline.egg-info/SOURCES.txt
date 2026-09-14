@@ -1,9 +1,0 @@
-README.md
-pyproject.toml
-src/san_antonio_311/__init__.py
-src/san_antonio_311_pipeline.egg-info/PKG-INFO
-src/san_antonio_311_pipeline.egg-info/SOURCES.txt
-src/san_antonio_311_pipeline.egg-info/dependency_links.txt
-src/san_antonio_311_pipeline.egg-info/requires.txt
-src/san_antonio_311_pipeline.egg-info/top_level.txt
-tests/test_package.py
