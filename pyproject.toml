@@ -8,7 +8,9 @@ version = "0.1.0"
 description = "A data pipeline for City of San Antonio 311 service-request data."
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+  "pandas>=2.3",
+]
 
 [project.scripts]
 sa311-ingest = "san_antonio_311.ingest:main"
@@ -21,7 +23,6 @@ dev = [
 notebook = [
   "jupyterlab>=4",
   "matplotlib>=3.10",
-  "pandas>=2.3",
 ]
 
 [tool.pytest.ini_options]

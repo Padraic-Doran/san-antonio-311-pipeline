@@ -14,6 +14,8 @@ public ArcGIS service and stores it locally as JSON Lines.
   and `LATITUDE` fields.
 - Writes atomically so an interrupted run does not leave a partial output file.
 - Keeps downloaded datasets out of Git while retaining the data directories.
+- Provides reusable pandas helpers for dataset summaries, missing values,
+  duplicate request numbers, date conversion, and category counts.
 
 ## Data source
 
@@ -119,7 +121,8 @@ ruff check .
 ```
 
 The tests exercise URL construction, the ArcGIS response transformation, JSONL
-writing, and package installation without calling the live API.
+writing, exploratory analysis helpers, and package installation without calling
+the live API.
 
 ## Known limitation
 
