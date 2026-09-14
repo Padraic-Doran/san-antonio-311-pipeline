@@ -29,10 +29,25 @@ Requirements: Python 3.11 or newer and Git.
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install '.[dev]'
+python -m pip install '.[dev,notebook]'
 pytest
 ruff check .
 ```
+
+## Explore in Jupyter
+
+If you prefer notebooks, start JupyterLab from the project folder:
+
+```bash
+source .venv/bin/activate
+jupyter lab
+```
+
+Then open `notebooks/01_explore_311_data.ipynb` and run its cells from top to
+bottom. The notebook reuses the functions in `ingest.py`, loads the result into
+pandas, examines columns and missing values, summarizes categories and statuses,
+and creates a simple chart. It is an exploration layer over the same reusable
+pipeline code—not a separate implementation.
 
 ## Download a sample
 
@@ -91,6 +106,7 @@ function and returning before continuing to the next statement.
 ```text
 src/san_antonio_311/  Python package
 tests/                Automated tests
+notebooks/            Jupyter exploration and learning
 data/raw/             Unmodified source data (not committed)
 data/processed/       Cleaned and transformed data (not committed)
 ```
