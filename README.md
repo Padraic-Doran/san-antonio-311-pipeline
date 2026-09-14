@@ -68,6 +68,24 @@ City of San Antonio ArcGIS Feature Service
      data/raw/service_requests.jsonl
 ```
 
+## Python execution order
+
+The smaller functions each perform one focused job, while `main()` coordinates
+their order. `build_query_url()` is nested under `fetch_features()` because
+building the URL is one step in the download operation.
+
+```text
+main()
+├── parse_args()          Read --limit and --output
+├── fetch_features()     Download and flatten the records
+│   └── build_query_url() Build the ArcGIS request URL
+└── write_jsonl()        Save the records safely
+```
+
+When `sa311-ingest` starts, Python calls `main()`. Python then follows the
+statements inside `main()` from top to bottom, temporarily entering each called
+function and returning before continuing to the next statement.
+
 ## Project structure
 
 ```text
