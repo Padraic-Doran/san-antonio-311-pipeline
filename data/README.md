@@ -16,3 +16,7 @@ are preserved, but ArcGIS geometry is flattened to longitude and latitude.
 Processed records use lowercase column names, trimmed text, UTC ISO-8601 dates,
 and a `coordinate_valid` flag. When duplicate service-request numbers appear,
 the row with the latest `LAST_UPDATED` value is retained.
+
+Processed files are the input to the PostgreSQL loader. The database uses
+`srnumber` as its primary key so repeat loads update a request instead of
+creating duplicate rows.

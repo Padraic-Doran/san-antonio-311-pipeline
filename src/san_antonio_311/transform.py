@@ -74,15 +74,18 @@ def transform_records(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
 
     # Python-style names are easier to query consistently in pandas and SQL.
     cleaned = cleaned.rename(columns=str.lower).reset_index(drop=True)
-    cleaned["coordinate_valid"] = (
+    coordinate_valid = (
         cleaned["longitude"].between(-180, 180, inclusive="both")
         & cleaned["latitude"].between(-90, 90, inclusive="both")
     )
+    cleaned["coordinate_valid"] = coordinate_valid
+    # Preserve the quality flag but prevent invalid coordinates entering analytics.
+    cleaned.loc[~coordinate_valid, ["longitude", "latitude"]] = pd.NA
 
     quality = {
         "duplicate_rows_removed": input_rows - len(cleaned),
         "input_rows": input_rows,
-        "invalid_or_missing_coordinates": int((~cleaned["coordinate_valid"]).sum()),
+        "invalid_or_missing_coordinates": int((~coordinate_valid).sum()),
         "missing_categories": int(cleaned["category"].isna().sum()),
         "output_rows": len(cleaned),
     }

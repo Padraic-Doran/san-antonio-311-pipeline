@@ -10,10 +10,12 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "pandas>=2.3",
+  "psycopg[binary]>=3.2",
 ]
 
 [project.scripts]
 sa311-ingest = "san_antonio_311.ingest:main"
+sa311-load = "san_antonio_311.database:main"
 sa311-transform = "san_antonio_311.transform:main"
 
 [project.optional-dependencies]
@@ -44,3 +46,6 @@ target-version = "py311"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+san_antonio_311 = ["sql/*.sql"]

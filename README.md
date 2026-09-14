@@ -22,6 +22,8 @@ snapshots, reusable exploratory helpers, and a Jupyter notebook.
 - Cleans landing snapshots into analysis-ready records with normalized text,
   UTC timestamps, lowercase column names, deterministic deduplication, and a
   quality report.
+- Loads processed records into a reproducible PostgreSQL database and safely
+  updates existing requests using `srnumber` as the primary key.
 
 ## Data source
 
@@ -40,7 +42,7 @@ within the last seven days; it is not a complete historical archive.
 | Exploratory notebook and helpers | Complete |
 | Automated tests and GitHub Actions | Complete |
 | Cleaning and transformation | Complete |
-| PostgreSQL loading | Planned |
+| PostgreSQL loading | Complete |
 | Historical trend analysis | Planned |
 
 ## Development setup
@@ -128,6 +130,55 @@ names to lowercase, flags invalid coordinates, and keeps the most recently
 updated row when a service-request number is duplicated. The landing snapshot is
 left unchanged.
 
+## Load PostgreSQL
+
+Docker keeps the development database reproducible and isolated from other
+projects. Start it from the repository root:
+
+```bash
+docker compose up -d postgres
+export DATABASE_URL=postgresql://sa311:sa311_dev@localhost:5432/sa311
+```
+
+Load a processed snapshot:
+
+```bash
+sa311-load \
+  --input data/processed/extracted_at=TIMESTAMP/service_requests.jsonl
+```
+
+The loader creates the `service_requests` table and indexes automatically. It
+uses an upsert: a new `srnumber` is inserted, while an existing `srnumber` is
+updated with the newest processed values. The entire load is one transaction,
+so a failure rolls it back instead of partially updating the table.
+
+Inspect the database with PostgreSQL's command-line client:
+
+```bash
+psql "$DATABASE_URL"
+```
+
+Example SQL queries:
+
+```sql
+SELECT status, count(*)
+FROM service_requests
+GROUP BY status
+ORDER BY count(*) DESC;
+
+SELECT category, count(*)
+FROM service_requests
+GROUP BY category
+ORDER BY count(*) DESC
+LIMIT 10;
+```
+
+Stop the container without deleting its saved database volume:
+
+```bash
+docker compose down
+```
+
 ## Pipeline flow
 
 ```text
@@ -144,6 +195,9 @@ City of San Antonio ArcGIS Feature Service
                     |
                     v
  processed JSONL snapshot + quality report
+                    |
+                    v
+          PostgreSQL upsert by srnumber
 ```
 
 ## Python execution order
@@ -172,6 +226,15 @@ main()
 └── write_quality_report()  Save row-level quality counts
 ```
 
+`sa311-load` then coordinates the database stage:
+
+```text
+main()
+├── load_processed_jsonl() Validate the processed file
+├── ensure_schema()        Create the table and indexes if needed
+└── upsert_records()       Insert new or update existing requests
+```
+
 When `sa311-ingest` starts, Python calls `main()`. Python then follows the
 statements inside `main()` from top to bottom, temporarily entering each called
 function and returning before continuing to the next statement.
@@ -180,10 +243,12 @@ function and returning before continuing to the next statement.
 
 ```text
 src/san_antonio_311/  Python package
+src/san_antonio_311/sql/ PostgreSQL schema
 tests/                Automated tests
 notebooks/            Jupyter exploration and learning
 data/raw/             Timestamped landing snapshots (not committed)
 data/processed/       Cleaned and transformed data (not committed)
+docker-compose.yml    Local PostgreSQL service
 ```
 
 ## Run quality checks
@@ -195,9 +260,10 @@ ruff check .
 ```
 
 The tests exercise pagination, schema and error handling, record transformation,
-atomic JSONL writing, metadata, the command entry point, exploratory helpers,
-and package installation without calling the live API. GitHub Actions runs the
-same checks on Python 3.11 and 3.14 after every push and pull request.
+atomic JSONL writing, metadata, command entry points, exploratory helpers, SQL
+generation, and PostgreSQL upserts without calling the live API. GitHub Actions
+runs the same checks against a real PostgreSQL service on Python 3.11 and 3.14
+after every push and pull request.
 
 ## Known limitation
 

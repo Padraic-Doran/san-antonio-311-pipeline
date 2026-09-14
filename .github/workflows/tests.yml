@@ -10,6 +10,22 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: sa311_test
+          POSTGRES_USER: sa311
+          POSTGRES_PASSWORD: sa311_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sa311 -d sa311_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      TEST_DATABASE_URL: postgresql://sa311:sa311_test@localhost:5432/sa311_test
     strategy:
       matrix:
         python-version: ["3.11", "3.14"]
