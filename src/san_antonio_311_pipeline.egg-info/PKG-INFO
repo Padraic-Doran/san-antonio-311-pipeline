@@ -1,3 +1,13 @@
+Metadata-Version: 2.4
+Name: san-antonio-311-pipeline
+Version: 0.1.0
+Summary: A data pipeline for City of San Antonio 311 service-request data.
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"
+Requires-Dist: ruff>=0.12; extra == "dev"
+
 # San Antonio 311 Pipeline
 
 A data engineering portfolio project for ingesting, validating, and analyzing City of San Antonio 311 service-request data.

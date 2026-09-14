@@ -15,6 +15,12 @@ venv/
 .coverage
 htmlcov/
 
+# Local datasets
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
 # Editors and macOS
 .vscode/
 .idea/
